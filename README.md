@@ -196,6 +196,20 @@ git update-index --skip-worktree cordis.patch.yml
 
 （`cordis.patch.local.yml` 也在 `.gitignore` 里，专门放这份备份。）
 
+### 发布前必读：`npm pack` 会绕过 skip-worktree
+
+`skip-worktree` 只挡 git，**挡不住打包工具**。在插件目录里直接 `npm pack`
+（或任何读磁盘的打包器）会把磁盘上那份**含真实密钥**的 `cordis.patch.yml`
+打进 tarball。发布 / 打包前务必从干净的 clone 或 `git archive` 出来的目录里做：
+
+```powershell
+git archive --format=tar HEAD | tar -x -C ..\dsh-mcp-manage-release
+cd ..\dsh-mcp-manage-release
+npm pack
+```
+
+用 `git archive` 拿到的永远是仓库里的最小配置，从根上避免这个问题。
+
 ## License
 
 [MIT](LICENSE)
