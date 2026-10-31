@@ -199,8 +199,13 @@ window.__ModuleLoader__.load({
       // 设置壳只把 section 的 label 用在左侧导航，正文标题由 section 自己画
       // （官方「内置插件」页也是这个套路：heading 18px/600）。
       '.mm-heading{margin:0 0 10px;font-size:18px;font-weight:600;line-height:1.35;letter-spacing:.01em;}',
-      '.mm-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;}',
-      '.mm-stats{display:flex;align-items:center;gap:11px;flex-wrap:wrap;min-width:0;}',
+      // 单行两列：左边统计（自身可换行），右边「添加按钮 + 筛选胶囊」竖排。
+      // 用 align-items:baseline —— 右列的第一项（添加按钮）与统计**第一行**的文字
+      // 落在同一条基线上。统计块换行时，取到的仍是第一行的基线，所以按钮永远和
+      // 「N 运行中」那一行齐平（用 flex-start 会让按钮顶端贴顶、文字偏低几像素，
+      // 用 center 会在统计换行时掉到两行中间）。
+      '.mm-top{display:flex;align-items:baseline;gap:10px;margin:0 0 14px;}',
+      '.mm-stats{display:flex;align-items:center;gap:11px;flex-wrap:wrap;min-width:0;flex:1 1 auto;}',
       '.mm-stat{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary);font-size:12px;white-space:nowrap;}',
       '.mm-stat b{color:var(--dsw-alias-label-primary);font-weight:600;font-variant-numeric:tabular-nums;}',
       '.mm-dot{width:6px;height:6px;border-radius:50%;flex:none;background:currentColor;}',
@@ -210,8 +215,10 @@ window.__ModuleLoader__.load({
       // 右角：上面一个「添加 MCP」，下面是筛选胶囊。margin-left:auto 提到容器上，
       // 两个元素就一起被推到右边；竖排是为了让按钮落在筛选上方那块空白（用户
       // 圈出来的位置），窄容器里也会整体折到统计行下面。
-      '.mm-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:auto;}',
-      '.mm-seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--mm-tint-7);}',
+      // flex:none —— 统计块拿了 flex:1，右列若仍可压缩就会被挤成一列一列地折行
+      // （按钮上的「全部」「运行中」会变成竖排单字，实测过）。
+      '.mm-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none;}',
+      '.mm-seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--mm-tint-7);flex:none;}',
       '.mm-seg button{font:inherit;font-size:11.5px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:transparent;border:0;border-radius:7px;padding:3px 10px;display:flex;align-items:center;gap:5px;transition:background .12s ease,color .12s ease;}',
       '.mm-seg button:hover{color:var(--dsw-alias-label-primary);}',
       '.mm-seg button[aria-pressed="true"]{background:var(--mm-tint-11);color:var(--dsw-alias-label-primary);}',
@@ -289,7 +296,10 @@ window.__ModuleLoader__.load({
       '.mm-add{display:flex;align-items:center;gap:5px;font:inherit;font-size:11.5px;line-height:1.5;padding:4px 11px 4px 9px;border-radius:8px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);border:1px dashed var(--mm-tint-11);white-space:nowrap;transition:background .12s ease,color .12s ease,border-color .12s ease;}',
       '.mm-add:hover{background:var(--mm-tint-7);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary);}',
       '.mm-add svg{flex:none;}',
-      '.mm-scrim{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;background:color-mix(in srgb,#000 55%,transparent);backdrop-filter:blur(2px);}',
+      // 垂直居中：align-items:center 而不是 flex-start + 6vh —— 后者把对话框顶在
+      // 页面上方（表单只有半屏高时会显得「飘在上面」）。max-height 仍是 88vh，
+      // 框高超过视口时 body 自己滚动，上下 padding 保证贴边时有呼吸。
+      '.mm-scrim{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:color-mix(in srgb,#000 55%,transparent);backdrop-filter:blur(2px);}',
       '.mm-dialog{width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;border-radius:15px;border:1px solid var(--mm-hair);background:var(--dsw-alias-bg-base);box-shadow:0 18px 48px rgba(0,0,0,.45);overflow:hidden;}',
       '.mm-dialog-head{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--mm-hair);}',
       '.mm-dialog-title{font-size:14px;font-weight:600;letter-spacing:.01em;}',
@@ -305,7 +315,18 @@ window.__ModuleLoader__.load({
       '.mm-input:focus,.mm-textarea:focus,.mm-select:focus{border-color:var(--dsw-alias-label-secondary);}',
       '.mm-textarea{resize:vertical;min-height:62px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11.5px;}',
       '.mm-textarea-code{min-height:150px;}',
-      '.mm-select{cursor:pointer;appearance:none;background-image:none;}',
+      // 下拉框：外观自己画（appearance:none 之后原生箭头会消失，这里补一个
+      // data-URI 的 V 形箭头）。
+      // 弹层底色：Windows 上 Chrome/Edge 的 <select> 弹出列表是**原生绘制的**，
+      // 不认 .mm-select 的 background，也不认 option 的 background —— 所以在深色
+      // 面板里会弹出一块通白（用户报的第 3 个问题）。真正生效的开关是 color-scheme：
+      // 置为 dark 后浏览器把整个弹层按深色画（含选中高亮）。宿主用 body 上的
+      // data-ds-dark-theme 属性切换主题，这里跟着它走，浅色主题仍然用原生浅色。
+      // 下面的 option 规则留给支持自定义弹层的浏览器（Firefox / 部分 Edge 版本）。
+      '.mm-select{cursor:pointer;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27 viewBox=%270 0 10 6%27 fill=%27none%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 stroke=%27%23adb2b8%27 stroke-width=%271.6%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:10px 6px;}',
+      'body[data-ds-dark-theme] .mm-select{color-scheme:dark;}',
+      '.mm-select option{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}',
+      '.mm-select option:checked{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);}',
       '.mm-tabs{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--mm-tint-7);align-self:flex-start;}',
       '.mm-tabs button{font:inherit;font-size:11.5px;line-height:1.5;padding:3px 12px;border:0;border-radius:7px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);}',
       '.mm-tabs button:hover{color:var(--dsw-alias-label-primary);}',
@@ -317,6 +338,9 @@ window.__ModuleLoader__.load({
       // 窄容器：去掉占用条，收窄数字列与开关间距（tokens 数字始终保留）。
       '@container (max-width:600px){.mm-bar{display:none;}.mm-metric{min-width:92px;gap:0;}.mm-ctrls{gap:11px;}.mm-main{gap:12px;padding:10px 12px;}.mm-expand{padding-left:36px;}}',
       '@container (max-width:470px){.mm-metric{display:none;}}',
+      // 统计行占满一行、右侧那一列换到下面并靠左 —— 否则窄容器里按钮会把
+      // 统计文字挤成一列一列地折行。
+      '@container (max-width:560px){.mm-top{flex-wrap:wrap;}.mm-actions{width:100%;flex-direction:row-reverse;justify-content:space-between;align-items:center;}}',
     ].join('');
 
     const fmt = (n) => Number(n).toLocaleString('en-US');
