@@ -7,7 +7,9 @@ node_modules/
 # 你本地磁盘上那份是完整配置（含 API key），靠 git 的 skip-worktree 标志位
 # 挡住提交，所以 git status 永远显示干净。
 #
-#   看标志位： git ls-files -v cordis.patch.yml   → 小写 s 表示已 skip
+#   看标志位： git ls-files -v cordis.patch.yml   → 大写 S 表示已 skip
+#              （没有这个标志时也可以直接 git ls-files --debug cordis.patch.yml，
+#               看到 skip-worktree 字段为 1）
 #   想改它  ： git update-index --no-skip-worktree cordis.patch.yml
 #   改完再锁： git update-index --skip-worktree cordis.patch.yml
 #

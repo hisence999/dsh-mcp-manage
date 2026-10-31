@@ -46,7 +46,19 @@ MCP 工具的 JSON Schema 会跟着每一次请求发给模型。服务器装得
 ```powershell
 # 1. 放进任意目录，然后在你的 profile 里安装
 dsh plugin --profile desktop add D:\path\to\dsh-mcp-manage
+
+# 2. 或者直接从 GitHub 装
+dsh plugin --profile desktop add https://github.com/hisence999/dsh-mcp-manage
 ```
+
+安装完成后插件是**空的**：面板会显示 0 台服务，因为仓库里带的 `cordis.patch.yml`
+只挂载插件自己（没有服务器、没有密钥）。往里加服务器有三种方式，任选：
+
+| 方式 | 适合谁 |
+| --- | --- |
+| 面板顶部「**+ 添加 MCP**」 | 最省事，有选项式表单和 JSON 粘贴两种填法，写完即生效 |
+| 复制 `cordis.patch.example.yml` 改成 `cordis.patch.yml` | 想一次配很多台、或想用 `!!js process.env.XXX` 引环境变量 |
+| 手写 `- insert:` 行 | 熟悉 Loader patch 语法的人 |
 
 或者手工挂载（开发时用）：
 
@@ -79,11 +91,18 @@ MCP 服务器全部写在 `cordis.patch.yml` 的 `- insert:` 列表里，**一�
           x-api-key: !!js process.env.EXA_API_KEY
 ```
 
-仓库里只提供脱敏模板 [`cordis.patch.example.yml`](cordis.patch.example.yml)，
-把它复制成 `cordis.patch.yml` 再填你自己的 key（或用 `!!js process.env.XXX` 引用环境变量）。
-`cordis.patch.yml` 已在 `.gitignore` 里，避免把密钥推到远端。
+两条不能违反的规矩：
+
+1. **文件必须是顶层 YAML 数组**。0 字节、只有注释、或者不是数组，宿主会
+   直接拒绝并**静默跳过整个 bundle**（插件根本不挂载，也不好排查）。
+2. **新行只能写在 `- insert:` 里**。同级的 `- id: xxx` 只能*覆盖*已经存在的行，
+   覆盖不存在的 id 会被丢弃。
+
+仓库里带的是最小可用配置（只挂 `mcp-manage` 自己），完整字段模板见
+[`cordis.patch.example.yml`](cordis.patch.example.yml)。
 
 改完配置不会自动热更：重启宿主，或随便改一下 profile 的 `cordis.patch.yml` 触发重组。
+（用面板「+ 添加 MCP」则无需重启，插件会自动重组。）
 
 ## 使用
 
@@ -142,6 +161,40 @@ url 协议、同名重复……），再追加一段 `- insert:` 到 profile 的
 - PTC（code-mode）模式下工具块里只有 `run_code`，该机制不生效（默认 native 模式下正常）。
 - 用途说明属于「提示」不是「约束」：模型看到说明只是更可能选对服务器，装载决策仍归它自己。
 - 写法基于现有插件管理器 / 装配瀑布 API 的组合，非官方文档化用法，DSH 大版本升级后可能需要适配。
+
+## 维护者笔记：为什么仓库里的 `cordis.patch.yml` 是空配置
+
+插件作者自己那份 `cordis.patch.yml` 里有一堆真实 API key，不能推到远端；
+但这个文件又**必须存在**（宿主读 bundle 的 patch 走的是「必需文件」路径，
+缺了会把整个 bundle 丢进 `skippedBundles`，装上去等于没装）。
+
+所以做法是让「磁盘上的文件」和「git 索引里的文件」是两份：
+
+```
+磁盘 cordis.patch.yml   = 你的完整配置（含密钥），永不提交
+索引 cordis.patch.yml   = 仓库里的最小配置（只挂 mcp-manage 自己，可以公开）
+```
+
+这靠 git 的 `skip-worktree` 标志位实现，本地完全无感（`git status` 永远干净）：
+
+```powershell
+git ls-files -v cordis.patch.yml          # 大写 S = 已锁定
+git update-index --no-skip-worktree cordis.patch.yml   # 要改它时先解锁
+git update-index --skip-worktree    cordis.patch.yml   # 改完再锁回去
+```
+
+⚠️ 解锁期间**不要提交**，否则你的密钥就进去了。
+
+`git pull` 若报 `Your local changes ... would be overwritten` / `not uptodate`：
+
+```powershell
+git update-index --no-skip-worktree cordis.patch.yml
+git checkout -- cordis.patch.yml                 # 先退回最小版
+Copy-Item cordis.patch.local.yml cordis.patch.yml  # 用你自己的备份盖回去
+git update-index --skip-worktree cordis.patch.yml
+```
+
+（`cordis.patch.local.yml` 也在 `.gitignore` 里，专门放这份备份。）
 
 ## License
 
