@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MCP管理",
+    "description": "Web profile 的 MCP 服务器集合：设置面板里一行一个开关，显示工具清单与 token 占用，并支持会话级懒启动。"
+  }
+}

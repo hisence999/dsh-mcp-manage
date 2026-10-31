@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="mcp-manage-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6b7cff"/>
+      <stop offset="0.55" stop-color="#9d6bff"/>
+      <stop offset="1" stop-color="#b45cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#mcp-manage-bg)"/>
+  <path d="M32 21v5.5M26.9 36.4 19.6 40.6M37.1 36.4l7.3 4.2"
+        stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.95"/>
+  <circle cx="32" cy="32" r="6" fill="#ffffff"/>
+  <circle cx="32" cy="14.5" r="4.2" fill="#ffffff" opacity="0.92"/>
+  <circle cx="14.8" cy="43.5" r="4.2" fill="#ffffff" opacity="0.92"/>
+  <circle cx="49.2" cy="43.5" r="4.2" fill="#ffffff" opacity="0.92"/>
+</svg>

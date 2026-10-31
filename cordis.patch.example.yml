@@ -1,0 +1,58 @@
+# dsh-mcp-manage —— 配置示例
+#
+# 用法：把本文件复制成同目录下的 cordis.patch.yml，按需增删 MCP 服务器。
+#   Copy-Item cordis.patch.example.yml cordis.patch.yml
+#
+# 三条硬规矩：
+#   1. 一行一台 MCP 服务器，全部写在这个 `- insert:` 列表里；
+#   2. patch 层是「整行替换 config」，不做深合并 —— 想改某台的参数就整行重写；
+#   3. 密钥别写死，用 !!js 引用环境变量（本文件就是这样写的）。
+
+- insert:
+    # ── 本插件自己那一行，别删 ──────────────────────────────────────────
+    # 设置面板「MCP管理」里的两个开关会写回这里的 config：
+    #   lazyServers: [comfy, ...]        开了会话级懒启动的服务器
+    #   serverNotes: { exa: '用途说明' }  每台手写的用途说明
+    - id: mcp-manage
+      name: 'dsh-mcp-manage'
+      config:
+        lazyServers: []
+        serverNotes: {}
+
+    # ── 远程 MCP（Streamable HTTP）：exa 联网搜索 / 抓网页 ──────────────
+    # 工具前缀 mcp__exa__*；托管端点，免装本地进程。
+    # 能力：web_search_exa / web_fetch_exa / web_search_advanced_exa
+    - id: mcp-exa
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: exa
+        transport: streamable-http
+        url: 'https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa'
+        headers:
+          # 把 EXA_API_KEY 设进环境变量即可；也可写成普通字符串（但别提交到 git）
+          x-api-key: !!js process.env.EXA_API_KEY
+        toolCallTimeoutMs: 180000
+        failOnStartupError: false
+
+    # ── 本地 MCP（stdio）：抓取网页转 markdown ─────────────────────────
+    # 工具前缀 mcp__fetch__*；需要先装 mcp-server-fetch（uvx 可直接跑）。
+    - id: mcp-fetch
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: fetch
+        transport: stdio
+        command: uvx
+        args: ['mcp-server-fetch']
+        failOnStartupError: false
+
+    # ── 懒启动示例：一台工具很多、平时用不到的服务 ────────────────────
+    # 它照常注册，但默认不进请求；模型通过 mcp_tools 装载之后才看得到工具。
+    # 等价于在面板上给它打开「懒启动」开关（面板写的也是同一个 lazyServers）。
+    # 再配一句用途说明，模型才知道什么时候该装它。
+    - id: mcp-comfy
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: comfy
+        transport: streamable-http
+        url: 'http://127.0.0.1:8188/mcp'
+        failOnStartupError: false

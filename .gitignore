@@ -1,0 +1,18 @@
+# 依赖
+node_modules/
+
+# 真实配置里带 API key，绝不入库；用 cordis.patch.example.yml 复制一份
+cordis.patch.yml
+
+# 本地快照 / 原型 / 项目记忆，不属于发布内容
+backups/
+prototype/
+memory/
+
+# 杂项
+*.log
+logs/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
