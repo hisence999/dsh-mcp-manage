@@ -100,6 +100,31 @@ MCP 服务器全部写在 `cordis.patch.yml` 的 `- insert:` 列表里，**一�
 - 点「说明」标签就知道这台写过描述；`保存说明` 写回 profile，`清除` 置空。
 - 顶部统计行可点：`全部 / 运行中 / 已停用 / 懒启动` 四档筛选，右侧显示懒启动可省下的 token。
 
+### 在面板里添加 MCP
+
+右上角「**+ 添加 MCP**」直接在面板里加一台服务器，两种填法：
+
+- **选项式**：名称 + 传输方式（本地进程 stdio / 远程 HTTP）+ 启动命令 / 启动参数 / 环境变量，或 URL / 请求头。
+- **JSON**：粘贴 `{"mcpServers": {…}}` 标准写法，可以一次加多台；`command` 视为 stdio，`url` 视为 http。
+  与你从 Trae / Claude 等编辑器里复制出来的配置同构。
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "…" }
+    }
+  }
+}
+```
+
+写入过程与报错都按「失败就不动文件」设计：先在内存里校验（名称合法性、`command` 不能带空格、
+url 协议、同名重复……），再追加一段 `- insert:` 到 profile 的 `cordis.patch.yml` 并原子替换，
+最后让 Loader 重组；重组失败会**自动回滚**并把宿主给的失败原因原样返回。
+写进去的是纯文本块，文件里其它行一个字节都不动（不会重排注释、也不会改写你手写的 `!!js` 表达式）。
+
 页面对应的 Host 路由（挂在 `/mcp-manage/api`）：
 
 | 路由 | 作用 |
@@ -108,6 +133,7 @@ MCP 服务器全部写在 `cordis.patch.yml` 的 `- insert:` 列表里，**一�
 | `POST /toggle` | `{ id, enabled }`，整台启停 |
 | `POST /lazy` | `{ server, lazy }`，写回 `config.lazyServers` |
 | `POST /note` | `{ server, note }`，写回 `config.serverNotes`（≥600 字报 400，`""` 即清除） |
+| `POST /add` | `{ mode:'json', json }` 或 `{ mode:'form', server, config }`，新增一台或多台服务器 |
 
 ## 边界
 

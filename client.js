@@ -80,6 +80,41 @@ window.__ModuleLoader__.load({
       unknownError: '读取失败',
       toggleFailed: '切换失败',
       restartNeeded: '已保存，需重启 dsh web 才能完全生效',
+
+      // ── 添加 MCP ───────────────────────────────────────────────────
+      addOpen: '添加 MCP',
+      addTitle: '添加 MCP 服务器',
+      addModeForm: '选项式',
+      addModeJson: 'JSON',
+      addName: '名称',
+      addNameHint: '工具前缀就是 mcp__<名称>__，只能用字母、数字、下划线和连字符，最多 32 个字符。',
+      addTransport: '传输方式',
+      addStdio: '本地进程（stdio）',
+      addHttp: '远程 HTTP',
+      addCommand: '启动命令',
+      addCommandHint: '只写可执行文件本身，参数放进下面的「启动参数」。',
+      addArgs: '启动参数',
+      addArgsHint: '一行一个，按顺序传给命令。',
+      addEnv: '环境变量',
+      addEnvHint: '一行一个 KEY=VALUE，可留空。',
+      addUrl: '服务地址',
+      addUrlHint: 'http 或 https 的完整地址。',
+      addHeaders: '请求头',
+      addHeadersHint: '一行一个 Key: Value，可留空。',
+      addJson: '配置 JSON',
+      addJsonHint: '支持 {"mcpServers": {…}} 标准写法，可以一次贴多台；有 command 就是 stdio，有 url 就是 http。',
+      addJsonPlaceholder: '{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-github"],\n      "env": { "GITHUB_TOKEN": "…" }\n    }\n  }\n}',
+      addSubmit: '添加',
+      addCancel: '取消',
+      addClose: '关闭',
+      addSaving: '正在写入…',
+      addSaved: '已添加，正在重载插件…',
+      addFailed: '添加失败',
+      addNeedsName: '先填一个名称',
+      addNeedsTarget: 'stdio 要填启动命令，http 要填服务地址',
+      addNeedsJson: '先粘贴配置 JSON',
+      addNameTaken: '已有同名的服务器',
+      addWarning: '新服务器会写进 profile 的 cordis.patch.yml，插件随即重载一次。',
     };
 
     const en = {
@@ -115,6 +150,40 @@ window.__ModuleLoader__.load({
       unknownError: 'Request failed',
       toggleFailed: 'Toggle failed',
       restartNeeded: 'Saved; restart dsh web to fully apply',
+
+      addOpen: 'Add MCP',
+      addTitle: 'Add an MCP server',
+      addModeForm: 'Form',
+      addModeJson: 'JSON',
+      addName: 'Name',
+      addNameHint: 'Tool names are mcp__<name>__<tool>: letters, digits, "_" and "-" only, at most 32.',
+      addTransport: 'Transport',
+      addStdio: 'Local process (stdio)',
+      addHttp: 'Remote HTTP',
+      addCommand: 'Command',
+      addCommandHint: 'The executable alone; its arguments go below.',
+      addArgs: 'Arguments',
+      addArgsHint: 'One per line, passed in order.',
+      addEnv: 'Environment',
+      addEnvHint: 'One KEY=VALUE per line, optional.',
+      addUrl: 'URL',
+      addUrlHint: 'A full http or https URL.',
+      addHeaders: 'Headers',
+      addHeadersHint: 'One Key: Value per line, optional.',
+      addJson: 'Configuration JSON',
+      addJsonHint: 'The standard {"mcpServers": {…}} shape, several servers at once. "command" means stdio, "url" means http.',
+      addJsonPlaceholder: '{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-github"],\n      "env": { "GITHUB_TOKEN": "…" }\n    }\n  }\n}',
+      addSubmit: 'Add',
+      addCancel: 'Cancel',
+      addClose: 'Close',
+      addSaving: 'Writing…',
+      addSaved: 'Added; reloading the plugin…',
+      addFailed: 'Could not add the server',
+      addNeedsName: 'Give it a name first',
+      addNeedsTarget: 'stdio needs a command, http needs a URL',
+      addNeedsJson: 'Paste the configuration JSON first',
+      addNameTaken: 'A server with that name already exists',
+      addWarning: 'The new server is written to the profile\'s cordis.patch.yml and the plugin reloads once.',
     };
 
     /**
@@ -138,7 +207,11 @@ window.__ModuleLoader__.load({
       '.mm-dot-on{color:var(--dsw-alias-state-success-primary);}',
       '.mm-dot-off{color:var(--dsw-alias-state-idle-primary);}',
       '.mm-sep{width:1px;height:12px;flex:none;background:var(--mm-hair);}',
-      '.mm-seg{display:flex;gap:2px;margin-left:auto;padding:2px;border-radius:9px;background:var(--mm-tint-7);}',
+      // 右角：上面一个「添加 MCP」，下面是筛选胶囊。margin-left:auto 提到容器上，
+      // 两个元素就一起被推到右边；竖排是为了让按钮落在筛选上方那块空白（用户
+      // 圈出来的位置），窄容器里也会整体折到统计行下面。
+      '.mm-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:auto;}',
+      '.mm-seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--mm-tint-7);}',
       '.mm-seg button{font:inherit;font-size:11.5px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:transparent;border:0;border-radius:7px;padding:3px 10px;display:flex;align-items:center;gap:5px;transition:background .12s ease,color .12s ease;}',
       '.mm-seg button:hover{color:var(--dsw-alias-label-primary);}',
       '.mm-seg button[aria-pressed="true"]{background:var(--mm-tint-11);color:var(--dsw-alias-label-primary);}',
@@ -209,6 +282,37 @@ window.__ModuleLoader__.load({
       '.mm-banner-error{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);}',
       '.mm-retry{font:inherit;font-size:11.5px;padding:3px 10px;border-radius:6px;cursor:pointer;background:transparent;color:inherit;border:1px solid currentColor;}',
       '.mm-skel{height:66px;border-radius:13px;background:var(--mm-tint-4);border:1px solid var(--mm-hair);margin-bottom:9px;}',
+
+      // ── 添加 MCP：顶栏按钮 + 对话框 ────────────────────────────────
+      // 按钮做成「虚线小方块 + 文字」，和右侧的筛选胶囊区分开：它触发写入，
+      // 不是筛选。
+      '.mm-add{display:flex;align-items:center;gap:5px;font:inherit;font-size:11.5px;line-height:1.5;padding:4px 11px 4px 9px;border-radius:8px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);border:1px dashed var(--mm-tint-11);white-space:nowrap;transition:background .12s ease,color .12s ease,border-color .12s ease;}',
+      '.mm-add:hover{background:var(--mm-tint-7);color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary);}',
+      '.mm-add svg{flex:none;}',
+      '.mm-scrim{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;background:color-mix(in srgb,#000 55%,transparent);backdrop-filter:blur(2px);}',
+      '.mm-dialog{width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;border-radius:15px;border:1px solid var(--mm-hair);background:var(--dsw-alias-bg-base);box-shadow:0 18px 48px rgba(0,0,0,.45);overflow:hidden;}',
+      '.mm-dialog-head{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--mm-hair);}',
+      '.mm-dialog-title{font-size:14px;font-weight:600;letter-spacing:.01em;}',
+      '.mm-dialog-x{margin-left:auto;flex:none;width:24px;height:24px;display:grid;place-items:center;border:0;border-radius:7px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:15px;line-height:1;}',
+      '.mm-dialog-x:hover{background:var(--mm-tint-11);color:var(--dsw-alias-label-primary);}',
+      '.mm-dialog-body{padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:13px;}',
+      '.mm-dialog-foot{display:flex;align-items:center;gap:9px;padding:12px 16px;border-top:1px solid var(--mm-hair);}',
+      '.mm-dialog-note{margin-right:auto;font-size:10.5px;line-height:1.5;color:var(--dsw-alias-label-secondary);opacity:.8;}',
+      '.mm-field{display:flex;flex-direction:column;gap:5px;}',
+      '.mm-field-label{font-size:11.5px;font-weight:600;color:var(--dsw-alias-label-primary);}',
+      '.mm-field-hint{font-size:10.5px;line-height:1.55;color:var(--dsw-alias-label-secondary);opacity:.8;margin:0;}',
+      '.mm-input,.mm-textarea,.mm-select{font:inherit;font-size:12px;line-height:1.6;padding:7px 10px;border-radius:8px;border:1px solid var(--mm-hair);background:var(--mm-tint-4);color:var(--dsw-alias-label-primary);outline:none;box-sizing:border-box;width:100%;}',
+      '.mm-input:focus,.mm-textarea:focus,.mm-select:focus{border-color:var(--dsw-alias-label-secondary);}',
+      '.mm-textarea{resize:vertical;min-height:62px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11.5px;}',
+      '.mm-textarea-code{min-height:150px;}',
+      '.mm-select{cursor:pointer;appearance:none;background-image:none;}',
+      '.mm-tabs{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--mm-tint-7);align-self:flex-start;}',
+      '.mm-tabs button{font:inherit;font-size:11.5px;line-height:1.5;padding:3px 12px;border:0;border-radius:7px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);}',
+      '.mm-tabs button:hover{color:var(--dsw-alias-label-primary);}',
+      '.mm-tabs button[aria-pressed="true"]{background:var(--mm-tint-11);color:var(--dsw-alias-label-primary);}',
+      '.mm-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px;}',
+      '.mm-field-error{border-color:var(--dsw-alias-state-error-primary);}',
+      '.mm-dialog-error{padding:8px 11px;border-radius:9px;border:1px solid var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);font-size:11.5px;line-height:1.55;word-break:break-word;}',
 
       // 窄容器：去掉占用条，收窄数字列与开关间距（tokens 数字始终保留）。
       '@container (max-width:600px){.mm-bar{display:none;}.mm-metric{min-width:92px;gap:0;}.mm-ctrls{gap:11px;}.mm-main{gap:12px;padding:10px 12px;}.mm-expand{padding-left:36px;}}',
@@ -392,6 +496,199 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /** `KEY=VALUE` lines → object; blank lines and `#` comments are ignored. */
+    function parsePairs(text) {
+      const out = {};
+      for (const line of String(text).split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0 || trimmed.startsWith('#')) continue;
+        const at = trimmed.indexOf('=') >= 0 ? trimmed.indexOf('=') : trimmed.indexOf(':');
+        if (at <= 0) continue;
+        const key = trimmed.slice(0, at).trim();
+        const value = trimmed.slice(at + 1).trim();
+        if (key.length > 0) out[key] = value;
+      }
+      return out;
+    }
+
+    /** One argument per line — pasted `-y\npkg` or `-y pkg` both arrive this way. */
+    function parseLines(text) {
+      return String(text)
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    }
+
+    /**
+     * The「添加 MCP」dialog.
+     *
+     * Two ways in, because two kinds of config exist in the world: a form for
+     * someone who knows which server they want, and a paste box for the
+     * `{"mcpServers": {…}}` block people copy out of another editor. Both end
+     * at the same Host route; the form is a convenience, not a second format.
+     *
+     * Everything is validated here only enough to refuse an empty submit. The
+     * Host is the authority on what a row means — duplicating its rules would
+     * just be a second set to keep in sync, and a field the Host rejects has to
+     * be reported verbatim anyway.
+     */
+    function AddDialog({ tr, existing, busy, error, onClose, onSubmit }) {
+      const [mode, setMode] = useState('form');
+      const [name, setName] = useState('');
+      const [transport, setTransport] = useState('stdio');
+      const [command, setCommand] = useState('');
+      const [args, setArgs] = useState('');
+      const [env, setEnv] = useState('');
+      const [url, setUrl] = useState('');
+      const [headers, setHeaders] = useState('');
+      const [json, setJson] = useState('');
+      const [failure, setFailure] = useState('');
+
+      const taken = existing instanceof Set ? existing : new Set(existing || []);
+      const trimmedName = name.trim();
+      const nameClash = mode === 'form' && trimmedName.length > 0 && taken.has(trimmedName);
+
+      const submit = () => {
+        setFailure('');
+        if (mode === 'json') {
+          if (json.trim().length === 0) return setFailure(tr('addNeedsJson'));
+          return onSubmit({ mode: 'json', json });
+        }
+        if (trimmedName.length === 0) return setFailure(tr('addNeedsName'));
+        if (nameClash) return setFailure(tr('addNameTaken'));
+        const config = transport === 'stdio'
+          ? { command: command.trim(), args: parseLines(args) }
+          : { url: url.trim() };
+        if (transport === 'stdio' && config.command.length === 0) return setFailure(tr('addNeedsTarget'));
+        if (transport === 'http' && config.url.length === 0) return setFailure(tr('addNeedsTarget'));
+        const pairs = parsePairs(transport === 'stdio' ? env : headers);
+        if (Object.keys(pairs).length > 0) {
+          if (transport === 'stdio') config.env = pairs;
+          else config.headers = pairs;
+        }
+        return onSubmit({ mode: 'form', server: trimmedName, config });
+      };
+
+      const field = (key, label, hint, control) => h('label', { className: 'mm-field' },
+        h('span', { className: 'mm-field-label' }, tr(label)),
+        control,
+        h('span', { className: 'mm-field-hint' }, tr(hint)),
+      );
+
+      const textInput = (value, onChange, placeholder, ariaLabel) => h('input', {
+        className: 'mm-input',
+        type: 'text',
+        value,
+        spellCheck: false,
+        placeholder,
+        'aria-label': ariaLabel,
+        onChange: (event) => onChange(event.target.value),
+      });
+
+      const textArea = (value, onChange, placeholder, ariaLabel, rows, code) => h('textarea', {
+        className: 'mm-textarea' + (code ? ' mm-textarea-code' : ''),
+        value,
+        rows,
+        spellCheck: false,
+        placeholder,
+        'aria-label': ariaLabel,
+        onChange: (event) => onChange(event.target.value),
+      });
+
+      const formBody = h(React.Fragment, null,
+        h('div', { className: 'mm-row2' },
+          h('div', { className: 'mm-field' },
+            h('span', { className: 'mm-field-label' }, tr('addName')),
+            h('input', {
+              className: 'mm-input' + (nameClash ? ' mm-field-error' : ''),
+              type: 'text',
+              value: name,
+              spellCheck: false,
+              placeholder: 'github',
+              'aria-label': tr('addName'),
+              onChange: (event) => setName(event.target.value),
+            }),
+          ),
+          h('div', { className: 'mm-field' },
+            h('span', { className: 'mm-field-label' }, tr('addTransport')),
+            h('select', {
+              className: 'mm-select',
+              value: transport,
+              'aria-label': tr('addTransport'),
+              onChange: (event) => setTransport(event.target.value),
+            },
+              h('option', { value: 'stdio' }, tr('addStdio')),
+              h('option', { value: 'http' }, tr('addHttp')),
+            ),
+          ),
+        ),
+        h('span', { className: 'mm-field-hint' }, tr('addNameHint')),
+
+        transport === 'stdio'
+          ? h(React.Fragment, null,
+              field('addCommand', 'addCommand', 'addCommandHint',
+                textInput(command, setCommand, 'npx', tr('addCommand'))),
+              field('addArgs', 'addArgs', 'addArgsHint',
+                textArea(args, setArgs, '-y\n@modelcontextprotocol/server-github', tr('addArgs'), 3, false)),
+              field('addEnv', 'addEnv', 'addEnvHint',
+                textArea(env, setEnv, 'GITHUB_TOKEN=…', tr('addEnv'), 3, false)),
+            )
+          : h(React.Fragment, null,
+              field('addUrl', 'addUrl', 'addUrlHint',
+                textInput(url, setUrl, 'https://example.com/mcp', tr('addUrl'))),
+              field('addHeaders', 'addHeaders', 'addHeadersHint',
+                textArea(headers, setHeaders, 'Authorization: Bearer …', tr('addHeaders'), 3, false)),
+            ),
+      );
+
+      const jsonBody = h(React.Fragment, null,
+        h('p', { className: 'mm-field-hint', style: { margin: 0 } }, tr('addJsonHint')),
+        textArea(json, setJson, tr('addJsonPlaceholder'), tr('addJson'), 12, true),
+      );
+
+      const shown = failure || error;
+
+      return h('div', {
+        className: 'mm-scrim',
+        onClick: (event) => { if (event.target === event.currentTarget) onClose(); },
+        onKeyDown: (event) => { if (event.key === 'Escape') onClose(); },
+      },
+        h('div', { className: 'mm-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': tr('addTitle') },
+          h('div', { className: 'mm-dialog-head' },
+            h('span', { className: 'mm-dialog-title' }, tr('addTitle')),
+            h('button', {
+              type: 'button',
+              className: 'mm-dialog-x',
+              'aria-label': tr('addClose'),
+              onClick: onClose,
+            }, '✕'),
+          ),
+          h('div', { className: 'mm-dialog-body' },
+            h('div', { className: 'mm-tabs' },
+              h('button', {
+                type: 'button',
+                'aria-pressed': mode === 'form' ? 'true' : 'false',
+                onClick: () => { setMode('form'); setFailure(''); },
+              }, tr('addModeForm')),
+              h('button', {
+                type: 'button',
+                'aria-pressed': mode === 'json' ? 'true' : 'false',
+                onClick: () => { setMode('json'); setFailure(''); },
+              }, tr('addModeJson')),
+            ),
+            mode === 'form' ? formBody : jsonBody,
+            shown ? h('div', { className: 'mm-dialog-error' }, shown) : null,
+          ),
+          h('div', { className: 'mm-dialog-foot' },
+            h('span', { className: 'mm-dialog-note' }, tr('addWarning')),
+            h('button', { type: 'button', className: 'mm-btn', disabled: busy, onClick: onClose }, tr('addCancel')),
+            h('button', { type: 'button', className: 'mm-btn mm-btn-primary', disabled: busy, onClick: submit },
+              busy ? tr('addSaving') : tr('addSubmit')),
+          ),
+        ),
+      );
+    }
+
     function Panel(props) {
       const tr = typeof props.t === 'function'
         ? props.t
@@ -409,6 +706,12 @@ window.__ModuleLoader__.load({
       // A locale switch while this page is open must re-render it: `t` itself
       // reads the active locale at call time, but React needs a nudge.
       const [, setTick] = useState(0);
+      // The add-server dialog is a panel-level overlay, so its open flag lives
+      // here (after every other hook, to keep the order stable).
+      const [adding, setAdding] = useState(false);
+      // Kept apart from `error`: a rejected paste must not paint the page-level
+      // error banner, which would look like the whole panel failed.
+      const [addError, setAddError] = useState('');
       useEffect(() => {
         const locale = props.locale;
         if (!locale || typeof locale.subscribe !== 'function') return undefined;
@@ -492,6 +795,40 @@ window.__ModuleLoader__.load({
           'noteSaved');
       };
 
+      /**
+       * Add a server, then re-read.
+       *
+       * Not routed through `mutate`: that helper optimistically patches the row
+       * list, and there is no row to patch yet. The re-read is also slower than
+       * 1200ms here — the Host writes the profile patch and reconciles the whole
+       * composition, so the new row only appears after the plugin reloads.
+       */
+      const addServer = (body) => {
+        setBusy(true);
+        setAddError('');
+        setNotice('');
+        fetch(API + '/add', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+          .then((response) => response.json())
+          .then((payload) => {
+            if (!payload || !payload.ok) {
+              throw new Error((payload && payload.error && payload.error.message) || tr('addFailed'));
+            }
+            setAdding(false);
+            setNotice(tr('addSaved'));
+            // A plugin reload takes a beat; poll a few times so the row shows up
+            // without asking the user to refresh anything.
+            [800, 1800, 3200].forEach((delay) => setTimeout(() => setNonce((n) => n + 1), delay));
+          })
+          .catch((cause) => {
+            setAddError(String((cause && cause.message) || cause));
+          })
+          .finally(() => setBusy(false));
+      };
+
       const toggleOpen = (id) => setOpen((current) => ({ ...current, [id]: !current[id] }));
 
       const heading = h('h2', { className: 'mm-heading' }, tr('title'));
@@ -561,15 +898,28 @@ window.__ModuleLoader__.load({
                 ),
               ) : null,
             ),
-            h('div', { className: 'mm-seg' },
-              filterButton('all', tr('filterAll'), totals.rows),
-              filterButton('on', tr('filterOn'), totals.enabled),
-              filterButton('off', tr('filterOff'), totals.rows - totals.enabled),
-              filterButton('lazy', tr('filterLazy'), totals.lazy || 0),
+            // Right-hand stack: the add button sits above the filter pills, in the
+            // spot the panel leaves empty on a wide page.
+            h('div', { className: 'mm-actions' },
+              h('button', {
+                type: 'button',
+                className: 'mm-add',
+                onClick: () => { setAddError(''); setAdding(true); },
+              },
+                h('svg', {
+                  width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none',
+                  stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round',
+                }, h('path', { d: 'M12 5v14M5 12h14' })),
+                tr('addOpen'),
+              ),
+              h('div', { className: 'mm-seg' },
+                filterButton('all', tr('filterAll'), totals.rows),
+                filterButton('on', tr('filterOn'), totals.enabled),
+                filterButton('off', tr('filterOff'), totals.rows - totals.enabled),
+                filterButton('lazy', tr('filterLazy'), totals.lazy || 0),
+              ),
             ),
-          ),
-
-          error ? h('div', { className: 'mm-banner mm-banner-error' },
+          ),          error ? h('div', { className: 'mm-banner mm-banner-error' },
             h('span', null, error),
             h('button', { type: 'button', className: 'mm-retry', onClick: () => setNonce((n) => n + 1) }, tr('retry')),
           ) : null,
@@ -592,6 +942,15 @@ window.__ModuleLoader__.load({
                   onOpen: () => toggleOpen(row.id),
                 })),
           ),
+
+          adding ? h(AddDialog, {
+            tr,
+            existing: new Set(rows.map((row) => row.serverName)),
+            busy,
+            onClose: () => setAdding(false),
+            onSubmit: addServer,
+            error: addError,
+          }) : null,
         ),
       );
     }

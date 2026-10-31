@@ -10,6 +10,7 @@
  *                                row is session-lazy;
  *   POST /mcp-manage/api/toggle  { id, enabled } -> pluginManager.setPluginEnabled
  *   POST /mcp-manage/api/lazy    { server, lazy } -> configEditor.edit
+ *   POST /mcp-manage/api/add     { mode, server | json } -> a new mcp-client row
  *
  *   mcp_tools                    a Host tool that loads a lazy MCP server's tools
  *                                into the CURRENT session (see below).
@@ -47,6 +48,9 @@
  *     MCP server with zero tools.
  */
 
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+
 /** Route prefix; the Client panel fetches below this path. */
 const PREFIX = '/mcp-manage/api'
 
@@ -71,6 +75,19 @@ const MAX_LAZY = 64
 
 /** Upper bound for one hand-written server note (characters). */
 const MAX_NOTE = 600
+
+/**
+ * mcp-client accepts this pattern for `serverName` and the Loader row id, and a
+ * name outside it fails validation *after* the write, which would leave a broken
+ * row behind. Reject it here instead.
+ */
+const SERVER_NAME = /^[A-Za-z0-9_-]{1,32}$/
+
+/** Rejected before touching the profile: a row that huge is a mistake, not intent. */
+const MAX_ADD_BYTES = 32 * 1024
+
+/** Cap on one paste; a config with more servers than this is a mistake. */
+const MAX_NEW_ROWS = 16
 
 /** `webServer` is required (the route); everything else is resolved at use. */
 export const inject = ['webServer', 'tools', 'systemPrompt']
@@ -753,6 +770,308 @@ function httpError(status, message) {
   return error
 }
 
+/* ── adding a server ──────────────────────────────────────────────────── */
+
+/**
+ * Turn one `{"mcpServers": {...}}`-style spec (or the panel's option form) into
+ * a Loader row for this profile.
+ *
+ * The shape is Trae's, because that is the format people already have in their
+ * clipboard and in their other editors; the only change is that the MCP client
+ * this profile loads wants `transport` and `serverName` written out, which a
+ * Trae config implies (`command` means stdio, `url` means http) rather than
+ * states. Anything unrecognised is rejected loudly instead of being dropped: a
+ * hand-pasted config that quietly loses `env` is the worst possible outcome.
+ *
+ * @returns `{ id, name, config }` — a Loader row, not yet persisted.
+ */
+function rowFromSpec(id, spec) {
+  if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    throw httpError(400, `"${id}" must be an object`)
+  }
+  if (!SERVER_NAME.test(id)) {
+    throw httpError(400, `"${id}" is not a usable server name: letters, digits, "_" and "-" only, at most 32`)
+  }
+
+  const command = typeof spec.command === 'string' ? spec.command.trim() : ''
+  const url = typeof spec.url === 'string' ? spec.url.trim() : ''
+  if (command.length === 0 && url.length === 0) {
+    throw httpError(400, `"${id}" needs either "command" (stdio) or "url" (http)`)
+  }
+  if (command.length > 0 && url.length > 0) {
+    throw httpError(400, `"${id}" sets both "command" and "url"; keep one of them`)
+  }
+
+  const config = { serverName: id, transport: command.length > 0 ? 'stdio' : 'streamable-http' }
+
+  if (command.length > 0) {
+    // A command with a space in it is the classic npx mistake (`npx -y pkg`);
+    // mcp-client would spawn it as a single executable name and fail obscurely.
+    if (/\s/.test(command)) {
+      throw httpError(400, `"${id}": "command" must be the executable alone; put its arguments in "args"`)
+    }
+    config.command = command
+    config.args = stringArray(spec.args, `${id}.args`)
+    const env = stringRecord(spec.env, `${id}.env`)
+    if (Object.keys(env).length > 0) config.env = env
+    const cwd = typeof spec.cwd === 'string' ? spec.cwd.trim() : ''
+    if (cwd.length > 0) config.cwd = cwd
+  } else {
+    let parsed
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw httpError(400, `"${id}": "url" is not a URL`)
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw httpError(400, `"${id}": "url" must be http or https`)
+    }
+    config.url = url
+    const headers = stringRecord(spec.headers, `${id}.headers`)
+    if (Object.keys(headers).length > 0) config.headers = headers
+  }
+
+  // Startup failures must not take the session down: a freshly pasted server is
+  // exactly the case where the command or the endpoint is wrong.
+  config.failOnStartupError = false
+  const timeout = Number(spec.toolCallTimeoutMs)
+  if (Number.isFinite(timeout) && timeout >= 1000) config.toolCallTimeoutMs = Math.trunc(timeout)
+
+  return { id, name: MCP_CLIENT_PACKAGE, config }
+}
+
+function stringArray(value, label) {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) throw httpError(400, `"${label}" must be an array of strings`)
+  return value.map((item) => {
+    if (typeof item !== 'string') throw httpError(400, `"${label}" must contain strings only`)
+    return item
+  })
+}
+
+function stringRecord(value, label) {
+  if (value === undefined || value === null) return {}
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw httpError(400, `"${label}" must be an object of strings`)
+  }
+  const out = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item !== 'string') throw httpError(400, `"${label}.${key}" must be a string`)
+    out[key] = item
+  }
+  return out
+}
+
+/**
+ * Parse whatever the panel sent into `[row, ...]`.
+ *
+ * Two inputs, one output: `mode: 'json'` takes a pasted `{"mcpServers": {...}}`
+ * document (several servers at once is the normal case for a shared config),
+ * and `mode: 'form'` builds the same thing from one filled-in form. A single
+ * server is allowed to arrive without the wrapper too, because people paste the
+ * inner object just as often.
+ */
+function rowsFromRequest(body) {
+  const raw = body?.json
+  if (body?.mode === 'json' || typeof raw === 'string') {
+    if (typeof raw !== 'string' || raw.trim().length === 0) {
+      throw httpError(400, 'json must be a non-empty string')
+    }
+    if (raw.length > MAX_ADD_BYTES) throw httpError(413, `json must be at most ${MAX_ADD_BYTES} bytes`)
+    let parsed
+    try {
+      parsed = JSON.parse(raw)
+    } catch (error) {
+      throw httpError(400, `json does not parse: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    const servers = parsed?.mcpServers ?? parsed
+    if (servers === null || typeof servers !== 'object' || Array.isArray(servers)) {
+      throw httpError(400, 'json must be {"mcpServers": {"<name>": {...}}} or one such object')
+    }
+    const entries = Object.entries(servers)
+    if (entries.length === 0) throw httpError(400, 'json contains no servers')
+    if (entries.length > MAX_NEW_ROWS) throw httpError(400, `at most ${MAX_NEW_ROWS} servers at a time`)
+    return entries.map(([id, spec]) => rowFromSpec(String(id).trim(), spec))
+  }
+
+  const id = typeof body?.server === 'string' ? body.server.trim() : ''
+  if (id.length === 0) throw httpError(400, 'server must be a non-empty string')
+  const spec = body?.config
+  if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    throw httpError(400, 'config must be an object')
+  }
+  return [rowFromSpec(id, spec)]
+}
+
+/**
+ * Append new rows to the profile patch.
+ *
+ * This is the one write the panel cannot express through `configEditor`: that
+ * service edits a row it already addresses, and a new server has no row yet.
+ * The patch layer is the only place a row can be born — a top-level `- id:`
+ * entry without `insert` may only OVERRIDE a row an earlier layer created, so
+ * "add" has to be an `insert` list, which is appended as text.
+ *
+ * Text is used deliberately: re-serializing the whole document would reformat
+ * (and de-quote) every unrelated row in a file the user maintains by hand. The
+ * block is emitted in the same style the file already uses, then verified by
+ * re-reading; a reload that fails is rolled back from the in-memory `before`.
+ *
+ * @returns `{ path, added }` after the Loader has recomposed from the new file.
+ */
+async function appendRows(ctx, rows) {
+  const editor = ctx.get('configEditor')
+  const settings = ctx.get('settings')
+  let path
+  if (editor !== undefined && typeof editor.documentPath === 'string') path = editor.documentPath
+  else if (settings !== undefined && typeof settings.prepareDocument === 'function') {
+    path = await settings.prepareDocument()
+  }
+  if (typeof path !== 'string' || path.length === 0) {
+    throw httpError(501, 'this composition exposes no profile patch to write to')
+  }
+
+  let before
+  try {
+    before = await readFile(path, 'utf8')
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+    before = ''
+  }
+
+  // Refuse a duplicate before writing. Two collisions matter: the row id (two
+  // `- id:` entries in one patch layer would make the second an override of the
+  // first, so a server would silently vanish) and the serverName (mcp-client
+  // refuses a second instance with a name already in use, which would otherwise
+  // surface as a rolled-back reconcile instead of a plain "already exists").
+  const rows0 = readRows(ctx)
+  const takenIds = new Set(rows0.map((row) => row.id))
+  const takenNames = new Set(rows0.map((row) => row.serverName))
+  for (const row of rows) {
+    if (takenIds.has(row.id)) {
+      throw httpError(409, `a row "${row.id}" already exists; pick another name or edit that row`)
+    }
+    if (takenNames.has(row.config.serverName)) {
+      throw httpError(409, `a server named "${row.config.serverName}" already exists; pick another name`)
+    }
+  }
+
+  const block = renderInsertBlock(rows)
+  const separator = before.length === 0
+    ? ''
+    : (before.endsWith('\n') ? (before.endsWith('\n\n') ? '' : '\n') : '\n\n')
+  const next = `${before}${separator}${block}`
+
+  await serializeWrite(async () => {
+    await writeProfilePatch(path, next)
+    await reconcile(ctx, rows.map((row) => row.id), before, path)
+  })
+
+  return { path, added: rows.map((row) => row.id) }
+}
+
+/** One `- insert:` list carrying the new rows, in the file's own style. */
+function renderInsertBlock(rows) {
+  const lines = [
+    '# ── 由面板「添加 MCP」写入；删掉这段等于删除下面这些服务器 ──────────',
+    '- insert:',
+  ]
+  for (const row of rows) {
+    lines.push(`    - id: ${yamlScalar(row.id)}`)
+    lines.push(`      name: ${yamlScalar(row.name)}`)
+    lines.push('      config:')
+    lines.push(...yamlLines(row.config, 8))
+  }
+  return `${lines.join('\n')}\n`
+}
+
+/** Emit a plain object as indented YAML; the value set here is small and known. */
+function yamlLines(value, indent) {
+  const pad = ' '.repeat(indent)
+  const lines = []
+  for (const [key, item] of Object.entries(value)) {
+    if (item === undefined) continue
+    if (Array.isArray(item)) {
+      if (item.length === 0) {
+        lines.push(`${pad}${key}: []`)
+      } else {
+        lines.push(`${pad}${key}:`)
+        for (const element of item) lines.push(`${pad}  - ${yamlScalar(element)}`)
+      }
+      continue
+    }
+    if (item !== null && typeof item === 'object') {
+      const nested = Object.keys(item).length === 0 ? [] : yamlLines(item, indent + 2)
+      if (nested.length === 0) {
+        lines.push(`${pad}${key}: {}`)
+      } else {
+        lines.push(`${pad}${key}:`)
+        lines.push(...nested)
+      }
+      continue
+    }
+    if (typeof item === 'boolean' || typeof item === 'number') {
+      lines.push(`${pad}${key}: ${String(item)}`)
+      continue
+    }
+    lines.push(`${pad}${key}: ${yamlScalar(item)}`)
+  }
+  return lines
+}
+
+/**
+ * A YAML scalar that always reads back as the same string.
+ *
+ * Everything here comes from a pasted config, so it may hold quotes, colons,
+ * leading dashes or a newline. Single-quoting with `''` escaping is the one form
+ * that is unambiguous for arbitrary text; anything containing a literal newline
+ * is refused upstream by the JSON parse anyway.
+ */
+function yamlScalar(value) {
+  const text = String(value)
+  if (text.length === 0) return "''"
+  return `'${text.replace(/'/g, "''")}'`
+}
+
+/** Reconcile the Loader from the file just written, rolling back on failure. */
+async function reconcile(ctx, addedIds, before, path) {
+  const hmr = ctx.get('hmr')
+  if (hmr === undefined || typeof hmr.reconcileProfile !== 'function') {
+    // No HMR service: the file is correct but the running composition cannot
+    // pick it up. Say so instead of reporting a success nobody can see.
+    throw httpError(202, `saved to ${path}, but this composition cannot hot-reload it — restart dsh to load ${addedIds.join(', ')}`)
+  }
+  try {
+    await hmr.runExclusive(() => hmr.reconcileProfile(addedIds))
+  } catch (error) {
+    await writeProfilePatch(path, before)
+    try {
+      await hmr.runExclusive(() => hmr.reconcileProfile())
+    } catch {
+      // The rollback report is the one worth surfacing; a failed second
+      // reconcile would only mask it.
+    }
+    throw httpError(500, `the new server did not activate, so the profile patch was rolled back: ${
+      error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/** Atomic replace: a patch file read mid-write would fail the whole profile. */
+async function writeProfilePatch(path, text) {
+  const temporary = join(dirname(path), `.${Date.now().toString(36)}-${process.pid}.patch.tmp`)
+  await writeFile(temporary, text, { mode: 0o600 })
+  try {
+    await rename(temporary, path)
+  } catch (error) {
+    try {
+      await unlink(temporary)
+    } catch {
+      // The temporary itself already gone is the state we wanted.
+    }
+    throw error
+  }
+}
+
 /* ── http plumbing ────────────────────────────────────────────────────── */
 
 /** Loopback-only: this route mutates profile state, so it is not for the LAN. */
@@ -802,6 +1121,15 @@ async function handle(ctx, req, res, lazy, notes = {}) {
 
     if (path === `${PREFIX}/state` && method !== 'PUT' && method !== 'DELETE') {
       return sendJson(res, 200, { ok: true, value: buildState(ctx, lazy, notes) })
+    }
+
+    if (path === `${PREFIX}/add` && method === 'POST') {
+      const body = await readJsonBody(req)
+      // Parse and validate everything BEFORE touching the profile: a rejected
+      // paste must leave the file byte-identical.
+      const rows = rowsFromRequest(body)
+      const value = await appendRows(ctx, rows)
+      return sendJson(res, 200, { ok: true, value })
     }
 
     if (path === `${PREFIX}/toggle` && method === 'POST') {
