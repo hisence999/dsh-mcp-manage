@@ -1,8 +1,19 @@
 # 依赖
 node_modules/
 
-# 真实配置里带 API key，绝不入库；用 cordis.patch.example.yml 复制一份
-cordis.patch.yml
+# ── 关于 cordis.patch.yml（重要，别删这段）─────────────────────────────
+# 仓库里跟踪的是「最小配置」（只挂载 mcp-manage 自己那一行，无服务器无密钥），
+# 这样别人 clone 下来就能直接装上。
+# 你本地磁盘上那份是完整配置（含 API key），靠 git 的 skip-worktree 标志位
+# 挡住提交，所以 git status 永远显示干净。
+#
+#   看标志位： git ls-files -v cordis.patch.yml   → 小写 s 表示已 skip
+#   想改它  ： git update-index --no-skip-worktree cordis.patch.yml
+#   改完再锁： git update-index --skip-worktree cordis.patch.yml
+#
+# 若 git pull 报 "not uptodate"：先 --no-skip-worktree，再 checkout 出最小版，
+# 然后把 cordis.patch.local.yml 拷回 cordis.patch.yml，最后重新 skip-worktree。
+cordis.patch.local.yml
 
 # 本地快照 / 原型 / 项目记忆，不属于发布内容
 backups/

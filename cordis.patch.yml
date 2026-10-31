@@ -1,0 +1,12 @@
+# dsh-mcp-manage —— MCP 服务器集合 + 设置面板「MCP管理」
+#
+# 这是可发布的最小配置：只挂载本插件自己的 Host 半（index.js），
+# 具体连哪些 MCP 服务器由使用者自己添加 —— 见 cordis.patch.example.yml，
+# 或者装好后直接用设置面板上的「+ 添加 MCP」。
+#
+# 注意：本文件必须是顶层 YAML 数组。0 字节、纯注释、或不是数组，
+# 宿主都会拒绝并跳过整个 bundle（loadOverlayPatches / parsePatchList）。
+
+- insert:
+    - id: mcp-manage
+      name: 'dsh-mcp-manage'
