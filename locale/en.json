@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "MCP管理",
-    "description": "The Web profile's MCP servers, one settings row each: per-server switches, tool inventory with token cost, and session-lazy startup."
+    "description": "MCP server settings page: one row per server with its tool inventory and token cost, session-lazy startup, and a hand-written purpose note."
   }
 }

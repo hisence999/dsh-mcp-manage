@@ -36,6 +36,7 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
+    "assets/panel.png",
     "README.md",
     "LICENSE"
   ],
